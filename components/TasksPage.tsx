@@ -22,11 +22,11 @@ interface TasksPageProps {
   onBack: () => void;
 }
 
-// Maps task priority to Tailwind CSS background color classes.
-const priorityClasses = {
-  High: 'bg-red-500',
-  Medium: 'bg-yellow-500',
-  Low: 'bg-green-500',
+// Maps task priority to a prominent left border color.
+const priorityBorderClasses: Record<Task['priority'], string> = {
+  High: 'border-l-red-500',
+  Medium: 'border-l-yellow-500',
+  Low: 'border-l-green-500',
 };
 
 // Reusable styling for input elements on this page.
@@ -69,7 +69,8 @@ const TasksPage: React.FC<TasksPageProps> = ({ onBack }) => {
     // State to hold tasks that are currently being shown as notifications.
     const [activeNotifications, setActiveNotifications] = useState<Task[]>([]);
     // Ref to store timeout IDs for scheduled reminders.
-    const reminderTimeouts = useRef<Record<number, NodeJS.Timeout>>({});
+    // FIX: Use `ReturnType<typeof setTimeout>` for cross-environment compatibility (browser/Node).
+    const reminderTimeouts = useRef<Record<number, ReturnType<typeof setTimeout>>>({});
     // State to provide visual feedback by tracking the ID of a newly added task.
     const [recentlyUpdatedTaskId, setRecentlyUpdatedTaskId] = useState<number | null>(null);
 
@@ -302,12 +303,12 @@ const TasksPage: React.FC<TasksPageProps> = ({ onBack }) => {
                         return (
                             <li 
                                 key={task.id} 
-                                className={`flex items-center justify-between p-2.5 rounded-lg transition-colors duration-1000 ease-out 
+                                className={`flex items-center justify-between p-2.5 rounded-lg transition-colors duration-1000 ease-out border-l-4 
                                     ${recentlyUpdatedTaskId === task.id
-                                        ? 'bg-indigo-100 ring-2 ring-indigo-300' // Highlight class for new tasks with reminders
+                                        ? 'bg-indigo-100 ring-2 ring-indigo-300 border-indigo-300' // Highlight class for new tasks with reminders
                                         : task.completed
-                                            ? 'bg-gray-200 opacity-70' // Completed task style
-                                            : 'bg-white/70' // Default task style
+                                            ? 'bg-gray-200 opacity-70 border-gray-300' // Completed task style
+                                            : `bg-white/70 ${priorityBorderClasses[task.priority]}` // Default task style with priority border
                                     }`}
                                 >
                                 <div className="flex items-center gap-3 flex-grow min-w-0">
@@ -332,7 +333,6 @@ const TasksPage: React.FC<TasksPageProps> = ({ onBack }) => {
                                 </div>
                                 <div className="flex items-center gap-3 shrink-0 ml-4">
                                     {task.dueDate && <span className="text-xs text-gray-600 hidden sm:inline">{new Date(task.dueDate + 'T00:00:00').toLocaleDateString(undefined, { month: 'short', day: 'numeric'})}</span>}
-                                    <span title={`Priority: ${task.priority}`} className={`w-3 h-3 rounded-full ${priorityClasses[task.priority]}`}></span>
                                     <button onClick={() => requestDeleteTask(task.id)} className="text-gray-400 hover:text-red-500" aria-label={`Delete task ${task.text}`}>
                                         <Trash className="w-4 h-4" />
                                     </button>

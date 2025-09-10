@@ -40,6 +40,8 @@ const statusColors: Record<Client['status'], string> = {
 const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
     // State to hold the list of clients.
     const [clients] = useState<Client[]>(mockClients);
+    // State to hold the current value of the search input field.
+    const [searchQuery, setSearchQuery] = useState('');
 
     /**
      * Calculates a human-readable string for the time elapsed since a given date.
@@ -58,6 +60,12 @@ const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         if (interval > 1) return Math.floor(interval) + " days ago";
         return "Today";
     };
+
+    // Filter the clients array based on the search query.
+    // The filter is case-insensitive.
+    const filteredClients = clients.filter(client =>
+        client.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
 
     return (
         <div className="flex-1 text-white flex flex-col animate-slide-in overflow-y-auto">
@@ -79,25 +87,46 @@ const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
           </header>
 
           {/* Main Content Area: List of Client Cards */}
-          <main className="flex-1 overflow-y-auto p-6 space-y-4">
-            {clients.map(client => (
-                <Card key={client.id} className="bg-white/90 backdrop-blur-sm text-[#0a2a44]">
-                    <CardContent className="p-4">
-                        <div className="flex justify-between items-start">
-                           <div className="space-y-1">
-                                <h3 className="font-bold text-lg">{client.name}</h3>
-                                <p className="text-xs text-gray-600">Interested in: {client.propertyOfInterest}</p>
-                                <p className="text-xs text-gray-500">Last Contact: {timeSince(client.lastContact)}</p>
-                           </div>
-                           <div className="flex flex-col items-end space-y-2">
-                                {/* Status Badge with dynamic color */}
-                                <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[client.status]}`}>{client.status}</span>
-                                <Button size="sm" variant="outline" className="text-xs border-indigo-500 text-indigo-500 hover:bg-indigo-50">View Details</Button>
-                           </div>
-                        </div>
-                    </CardContent>
-                </Card>
-            ))}
+          <main className="flex-1 overflow-y-auto p-6">
+            {/* Search Bar for filtering clients */}
+            <div className="mb-6">
+              <input
+                type="text"
+                placeholder="Search clients by name..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-white/70 border border-transparent rounded-md px-4 py-2 text-sm text-[#0a2a43] placeholder:text-gray-500 focus:ring-2 focus:ring-indigo-400 focus:outline-none transition-shadow shadow-sm"
+                aria-label="Search clients"
+              />
+            </div>
+            
+            {/* Conditionally render the list of clients or a 'not found' message */}
+            <div className="space-y-4">
+                {filteredClients.length > 0 ? (
+                    filteredClients.map(client => (
+                        <Card key={client.id} className="bg-white/90 backdrop-blur-sm text-[#0a2a44]">
+                            <CardContent className="p-4">
+                                <div className="flex justify-between items-start">
+                                <div className="space-y-1">
+                                        <h3 className="font-bold text-lg">{client.name}</h3>
+                                        <p className="text-xs text-gray-600">Interested in: {client.propertyOfInterest}</p>
+                                        <p className="text-xs text-gray-500">Last Contact: {timeSince(client.lastContact)}</p>
+                                </div>
+                                <div className="flex flex-col items-end space-y-2">
+                                        {/* Status Badge with dynamic color */}
+                                        <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[client.status]}`}>{client.status}</span>
+                                        <Button size="sm" variant="outline" className="text-xs border-indigo-500 text-indigo-500 hover:bg-indigo-50">View Details</Button>
+                                </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    ))
+                ) : (
+                    <div className="text-center py-10">
+                        <p className="text-white/80">No clients found matching your search.</p>
+                    </div>
+                )}
+            </div>
           </main>
         </div>
     );
