@@ -3,14 +3,18 @@ import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { ArrowLeft, Download, FileText } from './Icons';
 
+/**
+ * Defines the structure for a single document object.
+ */
 interface Document {
     id: number;
     title: string;
     type: 'Sales Agreement' | 'Marketing Copy' | 'Market Report' | 'Email Template';
     date: string;
-    content: string;
+    content: string; // Content can contain markdown-like syntax
 }
 
+// Mock data for demonstration purposes.
 const mockDocuments: Document[] = [
     {
         id: 1,
@@ -97,10 +101,19 @@ Sarah`
     }
 ];
 
-// Renderer component to handle markdown-like syntax and code blocks
+/**
+ * A component to render document content, parsing markdown-like syntax
+ * (bold, links, lists) and highlighting code blocks.
+ * @param {{ content: string }} props - The props containing the document content string.
+ * @returns {React.ReactElement} The rendered document content.
+ */
 const DocumentRenderer: React.FC<{ content: string }> = ({ content }) => {
     const previewRef = useRef<HTMLDivElement>(null);
 
+    /**
+     * Effect to apply syntax highlighting to code blocks whenever the content changes.
+     * It uses the `highlight.js` library, which is loaded in `index.html`.
+     */
     useEffect(() => {
         if (previewRef.current && (window as any).hljs) {
             const codeBlocks = previewRef.current.querySelectorAll('pre code');
@@ -110,50 +123,66 @@ const DocumentRenderer: React.FC<{ content: string }> = ({ content }) => {
         }
     }, [content]);
     
+    /**
+     * Parses the raw content string and converts it into an HTML string.
+     * This uses `dangerouslySetInnerHTML`, so sanitization is important. Here, we manually
+     * escape HTML characters in user content before constructing the final HTML.
+     * @returns {{ __html: string }} An object suitable for `dangerouslySetInnerHTML`.
+     */
     const createMarkup = () => {
+        // First, separate code blocks from the rest of the text to process them differently.
         const parts = content.split(/(```(?:[\w-]+)?\n[\s\S]*?\n```)/g);
 
         const processedHtml = parts.filter(part => part).map((part) => {
+            // Check if the part is a code block.
             const codeBlockMatch = part.match(/^```([\w-]+)?\n([\s\S]*?)\n```$/);
             if (codeBlockMatch) {
                 const lang = codeBlockMatch[1] || 'plaintext';
                 const code = codeBlockMatch[2];
+                // Manually escape < and > to prevent HTML injection.
                 const escapedCode = code.replace(/</g, '&lt;').replace(/>/g, '&gt;');
                 return `<pre><code class="language-${lang}">${escapedCode}</code></pre>`;
             } else {
+                // Process regular text content line by line for lists, bolding, and links.
                 let html = '';
                 const lines = part.trim().split('\n');
-                let inList = null; // 'ul', 'ol', or null
-                let currentParagraph = [];
+                let inList = null; // Can be 'ul', 'ol', or null. Tracks if we are inside a list.
+                let currentParagraph: string[] = [];
 
+                // Helper to process markdown within a single line.
                 const processLineContent = (l: string) => l
-                    .replace(/</g, '&lt;').replace(/>/g, '&gt;')
-                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+                    .replace(/</g, '&lt;').replace(/>/g, '&gt;') // Escape HTML
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') // Bold
+                    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>'); // Links
 
+                // Iterate over each line to build the HTML structure.
                 for (const rawLine of lines) {
                     const line = rawLine.trim();
-                    const ulMatch = line.match(/^[-*]\s+(.*)/);
-                    const olMatch = line.match(/^\d+\.\s+(.*)/);
+                    const ulMatch = line.match(/^[-*]\s+(.*)/); // Unordered list item
+                    const olMatch = line.match(/^\d+\.\s+(.*)/); // Ordered list item
 
                     if (ulMatch || olMatch) {
+                        // If we encounter a list item, first wrap any preceding text in a paragraph.
                         if (currentParagraph.length > 0) {
                             html += `<p>${currentParagraph.join('<br/>')}</p>`;
                             currentParagraph = [];
                         }
                         const listType = ulMatch ? 'ul' : 'ol';
-                        const itemContent = ulMatch ? ulMatch[1] : olMatch[1];
+                        const itemContent = ulMatch ? ulMatch[1] : olMatch![1];
+                        // Start a new list if we're not in one or if the type changes.
                         if (inList !== listType) {
-                            if (inList) html += `</${inList}>`;
+                            if (inList) html += `</${inList}>`; // Close previous list
                             html += `<${listType}>`;
                             inList = listType;
                         }
                         html += `<li>${processLineContent(itemContent)}</li>`;
                     } else {
+                        // If not a list item, close any open list.
                         if (inList) {
                             html += `</${inList}>`;
                             inList = null;
                         }
+                        // An empty line signifies a paragraph break.
                         if (line === '') {
                             if (currentParagraph.length > 0) {
                                 html += `<p>${currentParagraph.join('<br/>')}</p>`;
@@ -164,6 +193,7 @@ const DocumentRenderer: React.FC<{ content: string }> = ({ content }) => {
                         }
                     }
                 }
+                // Close any remaining open tags.
                 if (inList) html += `</${inList}>`;
                 if (currentParagraph.length > 0) html += `<p>${currentParagraph.join('<br/>')}</p>`;
                 
@@ -184,23 +214,44 @@ const DocumentRenderer: React.FC<{ content: string }> = ({ content }) => {
 };
 
 
+/**
+ * A full-page component for browsing and viewing generated documents.
+ * @param {{ onBack: () => void }} props - The props for the component.
+ * @returns {React.ReactElement} The rendered DocumentsPage component.
+ */
 const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+    // State for the list of all documents.
     const [documents] = useState<Document[]>(mockDocuments);
+    // State to track the currently selected document for viewing.
     const [selectedDocument, setSelectedDocument] = useState<Document | null>(documents[0]);
 
+    /**
+     * Handles selecting a document from the list to display its content.
+     * @param {Document} doc - The document that was clicked.
+     */
     const handleSelectDocument = (doc: Document) => {
         setSelectedDocument(doc);
     };
 
+    /**
+     * Generates a short text snippet from the document content for previewing in the list.
+     * It strips out markdown and code blocks.
+     * @param {string} content - The full document content.
+     * @param {number} [length=90] - The maximum length of the snippet.
+     * @returns {string} The generated snippet.
+     */
     const generateSnippet = (content: string, length: number = 90): string => {
         const text = content
-            .replace(/```[\s\S]*?```/g, '')
-            .replace(/(\*\*|\[.*?\]\(.*?\)|[-*]|\d+\.)/g, '')
-            .replace(/\s+/g, ' ')
+            .replace(/```[\s\S]*?```/g, '') // Remove code blocks
+            .replace(/(\*\*|\[.*?\]\(.*?\)|[-*]|\d+\.)/g, '') // Remove markdown syntax
+            .replace(/\s+/g, ' ') // Normalize whitespace
             .trim();
         return text.length > length ? text.substring(0, length).trim() + '...' : text;
     };
     
+    /**
+     * Handles downloading the selected document as a .txt file.
+     */
     const handleDownload = () => {
         if (!selectedDocument) return;
 
@@ -208,15 +259,16 @@ const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
         link.href = url;
-        link.download = `${selectedDocument.title.replace(/\s/g, '_')}.txt`;
+        link.download = `${selectedDocument.title.replace(/\s/g, '_')}.txt`; // Create a safe filename
         document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
+        link.click(); // Programmatically click the link to trigger download
+        document.body.removeChild(link); // Clean up
         URL.revokeObjectURL(url);
     };
 
     return (
         <div className="flex-1 text-white flex flex-col animate-slide-in overflow-hidden">
+           {/* CSS for animations, scrollbars, and document preview styling */}
            <style>{`
             @keyframes slide-in {
               from { transform: translateX(100%); opacity: 0; }
@@ -249,6 +301,7 @@ const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             .document-preview-content li { margin-bottom: 0.35em; }
             .document-preview-content a { color: #4f46e5; text-decoration: underline; font-weight: 500; }
           `}</style>
+          {/* Page Header */}
           <header className="p-4 flex items-center justify-between shadow-md bg-white/10 backdrop-blur-md rounded-b-2xl shrink-0">
             <Button variant="ghost" size="icon" className="text-white" onClick={onBack}>
               <ArrowLeft className="w-6 h-6" />
@@ -257,8 +310,10 @@ const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             <div className="w-10"></div> {/* Spacer */}
           </header>
 
+          {/* Main Content Area with a two-column layout */}
           <main className="flex-1 overflow-y-auto p-6">
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 h-full">
+                {/* Left Column: Document List */}
                 <Card className="bg-white/90 backdrop-blur-sm text-[#0a2a44] lg:col-span-1">
                     <CardContent className="p-4">
                         <h3 className="font-semibold mb-3">Documents</h3>
@@ -266,7 +321,7 @@ const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                            {documents.map(doc => (
                                <li key={doc.id}>
                                    <button 
-                                    className={`w-full text-left p-3 rounded-lg transition-colors ${selectedDocument?.id === doc.id ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
+                                    className={`w-full text-left p-2 rounded-lg transition-colors ${selectedDocument?.id === doc.id ? 'bg-indigo-100' : 'hover:bg-gray-100'}`}
                                     onClick={() => handleSelectDocument(doc)}
                                    >
                                        <p className="font-semibold text-sm truncate">{doc.title}</p>
@@ -282,6 +337,7 @@ const DocumentsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                     </CardContent>
                 </Card>
 
+                {/* Right Column: Document Viewer */}
                 <Card className="bg-white/90 backdrop-blur-sm text-[#0a2a44] lg:col-span-2">
                     <CardContent className="p-4 h-full flex flex-col">
                         {selectedDocument ? (

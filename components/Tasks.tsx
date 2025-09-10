@@ -3,6 +3,9 @@ import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { Trash } from './Icons';
 
+/**
+ * Defines the structure of a single task object.
+ */
 export interface Task {
   id: number;
   text: string;
@@ -11,45 +14,70 @@ export interface Task {
   priority: 'Low' | 'Medium' | 'High';
 }
 
+/**
+ * Props for the Tasks component.
+ */
 interface TasksProps {
   tasks: Task[];
   setTasks: React.Dispatch<React.SetStateAction<Task[]>>;
 }
 
+// Maps task priority levels to corresponding background color classes.
 const priorityClasses = {
   High: 'bg-red-500',
   Medium: 'bg-yellow-500',
   Low: 'bg-green-500',
 };
 
+// Reusable style string for input fields in this component.
 const inputStyle = "bg-white/50 border border-gray-300 rounded-md px-3 py-1.5 text-sm text-[#0a2a43] placeholder:text-gray-400 focus:ring-2 focus:ring-indigo-500 focus:outline-none";
 
+/**
+ * A widget-style component for displaying and managing a list of tasks.
+ * This component is intended for use on the main dashboard. A more detailed
+ * view is available in `TasksPage.tsx`.
+ * @param {TasksProps} props - The props for the component.
+ * @returns {React.ReactElement} The rendered Tasks component.
+ */
 const Tasks: React.FC<TasksProps> = ({ tasks, setTasks }) => {
+  // State for the new task input fields.
   const [newTaskText, setNewTaskText] = useState('');
   const [newDueDate, setNewDueDate] = useState('');
   const [newPriority, setNewPriority] = useState<'Low' | 'Medium' | 'High'>('Medium');
 
+  /**
+   * Handles adding a new task to the list.
+   */
   const handleAddTask = () => {
-    if (newTaskText.trim() === '') return;
+    if (newTaskText.trim() === '') return; // Prevent adding empty tasks.
     const newTask: Task = {
-      id: Date.now(),
+      id: Date.now(), // Use timestamp for a unique ID
       text: newTaskText,
       completed: false,
       priority: newPriority,
       dueDate: newDueDate || undefined,
     };
-    setTasks([newTask, ...tasks]);
+    setTasks([newTask, ...tasks]); // Add new task to the beginning of the array
+    // Reset input fields
     setNewTaskText('');
     setNewDueDate('');
     setNewPriority('Medium');
   };
 
+  /**
+   * Toggles the 'completed' status of a task.
+   * @param {number} id - The ID of the task to toggle.
+   */
   const handleToggleComplete = (id: number) => {
     setTasks(tasks.map(task => 
       task.id === id ? { ...task, completed: !task.completed } : task
     ));
   };
 
+  /**
+   * Deletes a task from the list.
+   * @param {number} id - The ID of the task to delete.
+   */
   const handleDeleteTask = (id: number) => {
     setTasks(tasks.filter(task => task.id !== id));
   };
@@ -59,6 +87,7 @@ const Tasks: React.FC<TasksProps> = ({ tasks, setTasks }) => {
       <CardContent>
         <h2 className="text-sm font-semibold mb-3 text-[#0a2a43]">Tasks</h2>
 
+        {/* Form for adding a new task */}
         <div className="flex flex-col md:flex-row gap-2 mb-4 p-2 bg-white/20 rounded-lg">
           <input
             type="text"
@@ -87,6 +116,7 @@ const Tasks: React.FC<TasksProps> = ({ tasks, setTasks }) => {
           </Button>
         </div>
 
+        {/* List of existing tasks */}
         <ul className="space-y-2 max-h-60 overflow-y-auto pr-2">
           {tasks.length > 0 ? tasks.map(task => (
             <li key={task.id} className={`flex items-center justify-between p-2.5 rounded-lg transition-all ${task.completed ? 'bg-gray-200 opacity-70' : 'bg-white/70'}`}>

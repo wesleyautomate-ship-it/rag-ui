@@ -3,14 +3,18 @@ import { Card, CardContent } from './ui/Card';
 import { Button } from './ui/Button';
 import { ArrowLeft } from './Icons';
 
+/**
+ * Defines the structure for a single client object.
+ */
 interface Client {
   id: number;
   name: string;
   status: 'Hot Lead' | 'Active Buyer' | 'Warm Lead' | 'Past Client' | 'Cold Lead';
-  lastContact: string; // YYYY-MM-DD
+  lastContact: string; // Date in YYYY-MM-DD format
   propertyOfInterest: string;
 }
 
+// Mock data for clients, for demonstration purposes.
 const mockClients: Client[] = [
   { id: 1, name: 'Ahmed Al-Mansoori', status: 'Hot Lead', lastContact: '2024-07-29', propertyOfInterest: 'Palm Jumeirah Villa' },
   { id: 2, name: 'Fatima Al-Sayed', status: 'Active Buyer', lastContact: '2024-07-28', propertyOfInterest: 'Downtown 2BR' },
@@ -19,6 +23,7 @@ const mockClients: Client[] = [
   { id: 5, name: 'Maria Garcia', status: 'Cold Lead', lastContact: '2024-06-15', propertyOfInterest: 'Arabian Ranches' },
 ];
 
+// Maps client status to corresponding Tailwind CSS classes for styling the status badge.
 const statusColors: Record<Client['status'], string> = {
     'Hot Lead': 'bg-red-500 text-white',
     'Active Buyer': 'bg-indigo-500 text-white',
@@ -27,9 +32,20 @@ const statusColors: Record<Client['status'], string> = {
     'Cold Lead': 'bg-gray-400 text-white',
 };
 
+/**
+ * A full-page component for viewing and managing a list of clients.
+ * @param {{ onBack: () => void }} props - The props for the component.
+ * @returns {React.ReactElement} The rendered ClientsPage component.
+ */
 const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
+    // State to hold the list of clients.
     const [clients] = useState<Client[]>(mockClients);
 
+    /**
+     * Calculates a human-readable string for the time elapsed since a given date.
+     * @param {string} dateString - The date string in YYYY-MM-DD format.
+     * @returns {string} A relative time string (e.g., "3 days ago").
+     */
     const timeSince = (dateString: string) => {
         const date = new Date(dateString);
         const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
@@ -38,13 +54,14 @@ const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
         interval = seconds / 2592000;
         if (interval > 1) return Math.floor(interval) + " months ago";
         interval = seconds / 86400;
+        // Check if the interval is greater than 1 to correctly label "1 day ago" vs "Today"
         if (interval > 1) return Math.floor(interval) + " days ago";
-        if (interval > 0) return "Today";
         return "Today";
     };
 
     return (
         <div className="flex-1 text-white flex flex-col animate-slide-in overflow-y-auto">
+           {/* CSS for the slide-in animation */}
            <style>{`
             @keyframes slide-in {
               from { transform: translateX(-100%); opacity: 0; }
@@ -52,14 +69,16 @@ const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
             }
             .animate-slide-in { animation: slide-in 0.4s ease-in-out; }
           `}</style>
+          {/* Page Header */}
           <header className="p-4 flex items-center justify-between shadow-md bg-white/10 backdrop-blur-md rounded-b-2xl shrink-0">
             <Button variant="ghost" size="icon" className="text-white" onClick={onBack}>
               <ArrowLeft className="w-6 h-6" />
             </Button>
             <h1 className="text-lg font-semibold">Client Management</h1>
-            <div className="w-10"></div> {/* Spacer */}
+            <div className="w-10"></div> {/* Spacer to center the title */}
           </header>
 
+          {/* Main Content Area: List of Client Cards */}
           <main className="flex-1 overflow-y-auto p-6 space-y-4">
             {clients.map(client => (
                 <Card key={client.id} className="bg-white/90 backdrop-blur-sm text-[#0a2a44]">
@@ -71,7 +90,7 @@ const ClientsPage: React.FC<{ onBack: () => void }> = ({ onBack }) => {
                                 <p className="text-xs text-gray-500">Last Contact: {timeSince(client.lastContact)}</p>
                            </div>
                            <div className="flex flex-col items-end space-y-2">
-                                {/* FIX: Corrected a syntax error in the className prop. Erroneous backslashes were removed from the template literal. */}
+                                {/* Status Badge with dynamic color */}
                                 <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${statusColors[client.status]}`}>{client.status}</span>
                                 <Button size="sm" variant="outline" className="text-xs border-indigo-500 text-indigo-500 hover:bg-indigo-50">View Details</Button>
                            </div>
